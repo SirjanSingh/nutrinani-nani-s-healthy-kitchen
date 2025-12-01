@@ -19,7 +19,10 @@ export const Sidebar = ({ activeSection, setActiveSection }: SidebarProps) => {
     <aside className="w-64 min-h-screen bg-card border-r border-sidebar-border p-6 flex flex-col">
       <div className="mb-12 text-center">
         <img src={logo} alt="NutriNani Logo" className="w-32 h-32 mx-auto mb-4 rounded-full" />
-        <h1 className="text-3xl font-bold text-primary mb-1">NutriNani</h1>
+        <h1 className="text-3xl font-bold mb-1">
+          <span style={{ color: '#6DAA33' }}>Nutri</span>
+          <span style={{ color: '#C86A3B' }}>Nani</span>
+        </h1>
         <p className="text-sm text-muted-foreground">Decoding labels for a healthier you</p>
       </div>
 
