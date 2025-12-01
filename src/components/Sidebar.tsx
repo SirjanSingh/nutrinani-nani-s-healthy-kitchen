@@ -1,5 +1,6 @@
 import { LayoutDashboard, ScanBarcode, ChefHat, Mic } from "lucide-react";
 import { Section } from "@/pages/Index";
+import logo from "@/assets/nutrinani-logo.png";
 
 interface SidebarProps {
   activeSection: Section;
@@ -16,7 +17,8 @@ const navItems = [
 export const Sidebar = ({ activeSection, setActiveSection }: SidebarProps) => {
   return (
     <aside className="w-64 min-h-screen bg-card border-r border-sidebar-border p-6 flex flex-col">
-      <div className="mb-12">
+      <div className="mb-12 text-center">
+        <img src={logo} alt="NutriNani Logo" className="w-32 h-32 mx-auto mb-4 rounded-full" />
         <h1 className="text-3xl font-bold text-primary mb-1">NutriNani</h1>
         <p className="text-sm text-muted-foreground">Decoding labels for a healthier you</p>
       </div>
