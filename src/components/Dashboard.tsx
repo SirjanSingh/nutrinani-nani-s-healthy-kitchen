@@ -37,7 +37,7 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-foreground mb-2">Welcome back, Amtoj 👋</h2>
+        <h2 className="text-3xl font-bold text-foreground mb-2">Welcome beta, Sirjan 👋</h2>
         <p className="text-muted-foreground">Tell NutriNani your health profile so we can decode labels safely.</p>
       </div>
 
