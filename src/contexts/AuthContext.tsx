@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { signIn, signOut, signUp, getCurrentUser, AuthUser, isDemoAuth } from '@/lib/auth';
+import { signIn, signOut, signUp, signInWithGoogle, getCurrentUser, AuthUser, isDemoAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { Hub } from 'aws-amplify/utils';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -10,6 +11,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,22 +21,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const { toast } = useToast();
 
+  const checkAuth = useCallback(async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      console.error('Error checking auth:', error);
+      setUser(null);
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Check for existing session on mount
-    const checkAuth = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Error checking auth:', error);
-        setUser(null);
-      } finally {
-        setIsAuthLoading(false);
-      }
-    };
-
     checkAuth();
-  }, []);
+
+    // Listen for Amplify auth events (OAuth redirects, etc.)
+    if (!isDemoAuth) {
+      const hubListener = Hub.listen('auth', ({ payload }) => {
+        switch (payload.event) {
+          case 'signedIn':
+            checkAuth();
+            break;
+          case 'signedOut':
+            setUser(null);
+            break;
+          case 'tokenRefresh':
+            checkAuth();
+            break;
+          case 'tokenRefresh_failure':
+            setUser(null);
+            toast({
+              title: "Session expired",
+              description: "Please login again.",
+              variant: "destructive",
+            });
+            break;
+        }
+      });
+
+      return () => hubListener();
+    }
+  }, [checkAuth, toast]);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
@@ -94,6 +123,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast]);
 
+  const loginWithGoogle = useCallback(async () => {
+    try {
+      await signInWithGoogle();
+      // For OAuth redirect, the page will reload and Hub will handle the rest
+    } catch (error: any) {
+      const message = error.message || 'Google login failed';
+      toast({
+        title: "Google login failed",
+        description: message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  }, [toast]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -104,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         register,
+        loginWithGoogle,
       }}
     >
       {children}

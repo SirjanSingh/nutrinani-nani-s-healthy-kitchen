@@ -1,167 +1,131 @@
-import {
-  CognitoUserPool,
-  CognitoUser,
-  AuthenticationDetails,
-  CognitoUserSession,
-  CognitoUserAttribute,
-} from 'amazon-cognito-identity-js';
+import { 
+  signUp as amplifySignUp, 
+  signIn as amplifySignIn, 
+  signOut as amplifySignOut,
+  confirmSignUp as amplifyConfirmSignUp,
+  getCurrentUser as amplifyGetCurrentUser,
+  fetchAuthSession,
+  signInWithRedirect,
+} from 'aws-amplify/auth';
+import { isAmplifyConfigured } from './amplify';
 
-const userPoolId = import.meta.env.VITE_COGNITO_USER_POOL_ID;
-const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID;
+// Demo mode when Amplify is not configured
+export const isDemoAuth = !isAmplifyConfigured;
 
-// Demo mode when Cognito is not configured
-export const isDemoAuth = !userPoolId || !clientId;
-
-let userPool: CognitoUserPool | null = null;
-
-if (!isDemoAuth) {
-  userPool = new CognitoUserPool({
-    UserPoolId: userPoolId,
-    ClientId: clientId,
-  });
-}
-
-// Demo user for when Cognito is not configured
+// Demo user for testing without Cognito
 const DEMO_USER = {
+  id: 'demo-user-id',
   email: 'demo@nutrinani.com',
   name: 'Demo User',
 };
-
 const DEMO_TOKEN = 'demo-jwt-token';
+const DEMO_SESSION_KEY = 'nutrinani_demo_session';
 
 export interface AuthUser {
+  id?: string;
   email: string;
   name?: string;
 }
 
-// Local storage keys for demo mode
-const DEMO_SESSION_KEY = 'nutrinani_demo_session';
-
+// Sign up with email/password
 export async function signUp(email: string, password: string, name?: string): Promise<void> {
   if (isDemoAuth) {
-    // Demo mode: simulate signup
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ email, name: name || email.split('@')[0] }));
+    await new Promise(resolve => setTimeout(resolve, 500));
+    localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({ ...DEMO_USER, email, name }));
     return;
   }
 
-  return new Promise((resolve, reject) => {
-    const attributeList: CognitoUserAttribute[] = [];
-    
-    if (name) {
-      attributeList.push(new CognitoUserAttribute({ Name: 'name', Value: name }));
-    }
-
-    userPool!.signUp(email, password, attributeList, [], (err, result) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve();
-    });
+  await amplifySignUp({
+    username: email,
+    password,
+    options: {
+      userAttributes: {
+        email,
+        name: name || '',
+      },
+    },
   });
 }
 
+// Confirm signup with verification code
 export async function confirmSignUp(email: string, code: string): Promise<void> {
   if (isDemoAuth) {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 300));
     return;
   }
 
-  const cognitoUser = new CognitoUser({
-    Username: email,
-    Pool: userPool!,
-  });
-
-  return new Promise((resolve, reject) => {
-    cognitoUser.confirmRegistration(code, true, (err, result) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      resolve();
-    });
+  await amplifyConfirmSignUp({
+    username: email,
+    confirmationCode: code,
   });
 }
 
+// Sign in with email/password
 export async function signIn(email: string, password: string): Promise<AuthUser> {
   if (isDemoAuth) {
-    // Demo mode: accept any credentials or specific demo credentials
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo, accept demo@nutrinani.com/demo123 or any credentials
-    const user = { email, name: email.split('@')[0] };
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const user = { ...DEMO_USER, email };
     localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(user));
     return user;
   }
 
-  const cognitoUser = new CognitoUser({
-    Username: email,
-    Pool: userPool!,
+  const result = await amplifySignIn({
+    username: email,
+    password,
   });
 
-  const authDetails = new AuthenticationDetails({
-    Username: email,
-    Password: password,
-  });
+  if (result.isSignedIn) {
+    return getCurrentUser() as Promise<AuthUser>;
+  }
 
-  return new Promise((resolve, reject) => {
-    cognitoUser.authenticateUser(authDetails, {
-      onSuccess: (session: CognitoUserSession) => {
-        const payload = session.getIdToken().payload;
-        resolve({
-          email: payload.email || email,
-          name: payload.name,
-        });
-      },
-      onFailure: (err) => {
-        reject(err);
-      },
-      newPasswordRequired: () => {
-        reject(new Error('New password required'));
-      },
-    });
-  });
+  throw new Error('Sign in failed');
 }
 
+// Sign in with Google (OAuth redirect)
+export async function signInWithGoogle(): Promise<void> {
+  if (isDemoAuth) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const user = { ...DEMO_USER, email: 'google-user@gmail.com', name: 'Google User' };
+    localStorage.setItem(DEMO_SESSION_KEY, JSON.stringify(user));
+    window.location.reload();
+    return;
+  }
+
+  await signInWithRedirect({ provider: 'Google' });
+}
+
+// Sign out
 export async function signOut(): Promise<void> {
   if (isDemoAuth) {
     localStorage.removeItem(DEMO_SESSION_KEY);
     return;
   }
 
-  const cognitoUser = userPool?.getCurrentUser();
-  if (cognitoUser) {
-    cognitoUser.signOut();
-  }
+  await amplifySignOut();
 }
 
+// Get access token for API calls
 export async function getAccessToken(): Promise<string | null> {
   if (isDemoAuth) {
     const session = localStorage.getItem(DEMO_SESSION_KEY);
     return session ? DEMO_TOKEN : null;
   }
 
-  const cognitoUser = userPool?.getCurrentUser();
-  if (!cognitoUser) return null;
-
-  return new Promise((resolve, reject) => {
-    cognitoUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
-      if (err || !session) {
-        resolve(null);
-        return;
-      }
-      resolve(session.getAccessToken().getJwtToken());
-    });
-  });
+  try {
+    const session = await fetchAuthSession();
+    return session.tokens?.accessToken?.toString() || null;
+  } catch {
+    return null;
+  }
 }
 
+// Get current authenticated user
 export async function getCurrentUser(): Promise<AuthUser | null> {
   if (isDemoAuth) {
-    const session = localStorage.getItem(DEMO_SESSION_KEY);
-    if (session) {
+    const stored = localStorage.getItem(DEMO_SESSION_KEY);
+    if (stored) {
       try {
-        return JSON.parse(session);
+        return JSON.parse(stored);
       } catch {
         return null;
       }
@@ -169,30 +133,17 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     return null;
   }
 
-  const cognitoUser = userPool?.getCurrentUser();
-  if (!cognitoUser) return null;
-
-  return new Promise((resolve) => {
-    cognitoUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
-      if (err || !session) {
-        resolve(null);
-        return;
-      }
-      
-      cognitoUser.getUserAttributes((err, attributes) => {
-        if (err || !attributes) {
-          const payload = session.getIdToken().payload;
-          resolve({
-            email: payload.email,
-            name: payload.name,
-          });
-          return;
-        }
-
-        const email = attributes.find(a => a.Name === 'email')?.Value || '';
-        const name = attributes.find(a => a.Name === 'name')?.Value;
-        resolve({ email, name });
-      });
-    });
-  });
+  try {
+    const user = await amplifyGetCurrentUser();
+    const session = await fetchAuthSession();
+    const idToken = session.tokens?.idToken;
+    
+    return {
+      id: user.userId,
+      email: idToken?.payload?.email as string || user.signInDetails?.loginId || '',
+      name: idToken?.payload?.name as string || undefined,
+    };
+  } catch {
+    return null;
+  }
 }
