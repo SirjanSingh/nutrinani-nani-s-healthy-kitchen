@@ -4,8 +4,10 @@ import { Dashboard } from "@/components/Dashboard";
 import { Scanner } from "@/components/Scanner";
 import { Recipes } from "@/components/Recipes";
 import { VoiceBot } from "@/components/VoiceBot";
+import { Inventory } from "@/components/Inventory";
+import { Community } from "@/components/Community";
 
-export type Section = "dashboard" | "scanner" | "recipes" | "voice";
+export type Section = "dashboard" | "scanner" | "recipes" | "voice" | "inventory" | "community";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState<Section>("dashboard");
@@ -19,6 +21,8 @@ const Index = () => {
           {activeSection === "dashboard" && <Dashboard />}
           {activeSection === "scanner" && <Scanner />}
           {activeSection === "recipes" && <Recipes />}
+          {activeSection === "inventory" && <Inventory onNavigateToRecipes={() => setActiveSection("recipes")} />}
+          {activeSection === "community" && <Community />}
           {activeSection === "voice" && <VoiceBot />}
         </div>
       </main>

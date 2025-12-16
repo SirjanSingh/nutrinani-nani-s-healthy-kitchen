@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScanBarcode, ChefHat, Mic } from "lucide-react";
+import { LayoutDashboard, ScanBarcode, ChefHat, Mic, Package, Users } from "lucide-react";
 import { Section } from "@/pages/Index";
 import logo from "@/assets/nutrinani-logo.png";
 
@@ -11,6 +11,8 @@ const navItems = [
   { id: "dashboard" as Section, label: "Dashboard", icon: LayoutDashboard },
   { id: "scanner" as Section, label: "Scan & Verdict", icon: ScanBarcode },
   { id: "recipes" as Section, label: "Recipes & List", icon: ChefHat },
+  { id: "inventory" as Section, label: "Inventory", icon: Package },
+  { id: "community" as Section, label: "Community", icon: Users },
   { id: "voice" as Section, label: "Nani Voice Bot", icon: Mic },
 ];
 
