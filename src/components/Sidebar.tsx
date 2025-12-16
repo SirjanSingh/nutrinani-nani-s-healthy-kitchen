@@ -1,5 +1,7 @@
-import { LayoutDashboard, ScanBarcode, ChefHat, Mic, Package, Users } from "lucide-react";
+import { LayoutDashboard, ScanBarcode, ChefHat, Mic, Package, Users, LogOut } from "lucide-react";
 import { Section } from "@/pages/Index";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import logo from "@/assets/nutrinani-logo.png";
 
 interface SidebarProps {
@@ -17,6 +19,8 @@ const navItems = [
 ];
 
 export const Sidebar = ({ activeSection, setActiveSection }: SidebarProps) => {
+  const { user, logout } = useAuth();
+
   return (
     <aside className="w-64 min-h-screen bg-card border-r border-sidebar-border p-6 flex flex-col">
       <div className="mb-12 text-center">
@@ -52,7 +56,22 @@ export const Sidebar = ({ activeSection, setActiveSection }: SidebarProps) => {
         })}
       </nav>
 
-      <div className="mt-auto pt-6 border-t border-sidebar-border">
+      <div className="mt-auto pt-6 border-t border-sidebar-border space-y-3">
+        {user && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground truncate flex-1" title={user.email}>
+              {user.email}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={logout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           Demo version for hackathon
         </p>
